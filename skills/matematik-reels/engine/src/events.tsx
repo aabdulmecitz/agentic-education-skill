@@ -90,30 +90,36 @@ const Hook: React.FC<{e: EventBase}> = ({e}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const {w, h} = inner(e);
-  const chars = Array.from(e.text as string);
+  const hookWords = (e.text as string).split(/\s+/);
+  const accent = ((e.accent as string) ?? '').toLocaleLowerCase('tr').split(/\s+/);
+  let index = 0;
   return (
     <Panel e={e} plain>
       <Padded>
         <Fit w={w} h={h}>
-          <div style={{fontSize: 92, fontWeight: 800, lineHeight: 1.05, textAlign: 'center', maxWidth: w, textShadow: '0 6px 30px rgba(0,0,0,0.9)'}}>
-            {chars.map((c, i) => {
-              // Whole line is up within a third of a second: the hook has to read on first glance.
-              const p = spring({frame: frame - Math.min(i * 0.5, 9), fps, config: {damping: 12, stiffness: 240, mass: 0.5}});
-              return (
-                <span
-                  key={i}
-                  style={{
-                    display: 'inline-block',
-                    whiteSpace: 'pre',
-                    color: e.accent && (e.accent as string).includes(c) && c !== ' ' ? theme.yellow : theme.ink,
-                    transform: `scale(${0.55 + 0.45 * p})`,
-                    filter: `blur(${(1 - Math.min(1, p)) * 7}px)`,
-                  }}
-                >
-                  {c}
-                </span>
-              );
-            })}
+          <div style={{fontSize: 92, fontWeight: 800, lineHeight: 1.05, textAlign: 'center', width: w, textShadow: '0 6px 30px rgba(0,0,0,0.9)'}}>
+            {hookWords.map((word, n) => (
+              // Letters animate, but each word stays unbreakable so a line never wraps mid-word.
+              <span key={n} style={{display: 'inline-block', whiteSpace: 'nowrap', marginRight: '0.26em'}}>
+                {Array.from(word).map((c, i) => {
+                  // Whole line is up within a third of a second: the hook has to read on first glance.
+                  const p = spring({frame: frame - Math.min(index++ * 0.5, 9), fps, config: {damping: 12, stiffness: 240, mass: 0.5}});
+                  return (
+                    <span
+                      key={i}
+                      style={{
+                        display: 'inline-block',
+                        color: accent.includes(word.toLocaleLowerCase('tr')) ? theme.yellow : theme.ink,
+                        transform: `scale(${0.55 + 0.45 * p})`,
+                        filter: `blur(${(1 - Math.min(1, p)) * 7}px)`,
+                      }}
+                    >
+                      {c}
+                    </span>
+                  );
+                })}
+              </span>
+            ))}
           </div>
         </Fit>
       </Padded>

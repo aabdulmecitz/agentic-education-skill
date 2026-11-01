@@ -13,7 +13,7 @@ export type EventBase = {
 
 export type Camera = {from: number; scale: number; x: number; y: number};
 
-export type Broll = {from: number; to: number; src?: string; pip: boolean; title?: string};
+export type Broll = {from: number; to: number; src?: string; pip: boolean; title?: string; focus?: [number, number]};
 
 export type Word = {w: string; f0: number; f1: number};
 

@@ -16,8 +16,15 @@ cp -a "$SKILL_DIR/engine/src/." "$RUNTIME/engine/src/"
 cd "$RUNTIME/engine"
 
 COMMON=(--props="$JOB/timeline.json" --public-dir="$JOB" --log=error)
-npx remotion render src/index.ts Reel "$JOB/out.mp4" "${COMMON[@]}" \
-  --codec=h264 --crf=18 --pixel-format=yuv420p --audio-bitrate=192k
+# Chrome aborts on ERR_NETWORK_CHANGED when WSL or Docker interfaces flap, even on localhost. A retry clears it.
+for attempt in 1 2 3; do
+  if npx remotion render src/index.ts Reel "$JOB/out.mp4" "${COMMON[@]}" \
+    --codec=h264 --crf=18 --pixel-format=yuv420p --audio-bitrate=192k; then
+    break
+  fi
+  [ "$attempt" = 3 ] && { echo "Render 3 denemede de başarısız oldu." >&2; exit 1; }
+  echo "Render kesildi, yeniden deneniyor ($attempt/3)" >&2
+done
 
 # Cover frame: the hook fully landed.
 npx remotion still src/index.ts Reel "$JOB/kapak.png" "${COMMON[@]}" --frame=20

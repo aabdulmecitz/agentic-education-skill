@@ -15,7 +15,7 @@ Matematik öğretmeninin dikey videosunu veya ses kaydını Instagram Reels ve Y
 
 Kayıt yoksa konu veya kazanımdan hook ve çekim senaryosu yazar.
 
-> **Durum:** Geliştirme aşamasında. Gerçek öğretmen videosuyla henüz test edilmedi.
+> **Durum:** Geliştirme aşamasında. Akış, yapay sesli deneme videosuyla test edildi; gerçek öğretmen videosuyla henüz test edilmedi.
 
 ### Kurulum
 

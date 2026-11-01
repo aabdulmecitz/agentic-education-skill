@@ -76,7 +76,11 @@ class Anchors:
         joined = "".join(target)
         hits = []
         n = len(target)
-        for size in {max(1, n - 1), n, n + 1}:
+        # An exact phrase always beats a near one, or "yani parantez" also matches every "parantez".
+        for i in range(0, len(self.tokens) - n + 1):
+            if self.tokens[i:i + n] == target:
+                hits.append((i, n, 1.0))
+        for size in () if hits else {max(1, n - 1), n, n + 1}:
             for i in range(0, len(self.tokens) - size + 1):
                 score = difflib.SequenceMatcher(None, joined, "".join(self.tokens[i:i + size])).ratio()
                 if score >= 0.8:
@@ -202,6 +206,7 @@ def build(job):
 
         if kind == "broll":
             brolls.append({"from": to_frame(start), "to": to_frame(end), "pip": ev.get("pip", True),
+                           **({"focus": [face[0] + face[2] / 2, face[1] + face[3] / 2]} if face else {}),
                            **({"src": ev["src"]} if ev.get("src") else {}),
                            **({"title": ev["title"]} if ev.get("title") else {})})
             for j, child in enumerate(ev.get("scene", [])):
@@ -303,7 +308,12 @@ def build(job):
                 report.err(f"{a['id']} ({a['type']}) yüzünün %{share * 100:.0f}'ini kapatıyor. Başka yer seç veya camera ile kaydır.")
 
     # Long stretches with nothing changing are where viewers leave.
-    marks = sorted({0, frames} | {e["from"] for e in events} | {c["from"] for c in cameras} | {b["from"] for b in brolls})
+    marks = {0, frames} | {e["from"] for e in events} | {c["from"] for c in cameras} | {b["from"] for b in brolls}
+    for e in events:
+        for key in ("steps", "bars", "hops", "points", "items", "curves"):
+            marks |= {x["f"] for x in e.get(key, [])}
+        marks |= {e[k] for k in ("strike_f", "right_f", "answer_f") if k in e}
+    marks = sorted(marks)
     for a, b in zip(marks, marks[1:]):
         if (b - a) / fps > 6:
             report.warn(f"{a / fps:.1f}-{b / fps:.1f}s arası {(b - a) / fps:.1f}s görsel değişim yok.")
@@ -327,7 +337,7 @@ def build(job):
             captions.append({
                 "f0": to_frame(group[0]["s"]),
                 "f1": min(frames, to_frame(group[-1]["e"]) + 2),
-                "words": [{"w": w["w"].strip(".,;:"), "f0": to_frame(w["s"]), "f1": min(frames, to_frame(w["e"]) + 1)} for w in group],
+                "words": [{"w": w["w"].strip(".,;:"), "f0": to_frame(w["s"]), "f1": max(to_frame(w["s"]) + 1, to_frame(w["e"]))} for w in group],
             })
             group.clear()
         for w in words:

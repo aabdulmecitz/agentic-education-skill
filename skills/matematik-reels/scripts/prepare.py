@@ -68,23 +68,35 @@ def normalize(src, dst, fps):
 
 
 def transcribe(media, model_name, language):
+    import numpy as np
     from faster_whisper import WhisperModel
 
+    # Decode with ffmpeg: faster-whisper's PyAV path breaks across PyAV releases.
+    pcm = subprocess.run(["ffmpeg", "-v", "error", "-i", str(media), "-f", "f32le", "-ac", "1", "-ar", "16000", "-"],
+                         check=True, stdout=subprocess.PIPE).stdout
+    audio = np.frombuffer(pcm, dtype=np.float32)
     model = None
     for device, compute in (("cuda", "float16"), ("cpu", "int8")):
         try:
             model = WhisperModel(model_name, device=device, compute_type=compute,
                                  download_root=str(RUNTIME / "models"))
             segments, info = model.transcribe(
-                str(media), language=language, word_timestamps=True, vad_filter=True,
+                audio, language=language, word_timestamps=True, vad_filter=True,
                 vad_parameters={"min_silence_duration_ms": 250, "speech_pad_ms": 120},
                 initial_prompt=VOCAB, beam_size=5, condition_on_previous_text=False,
             )
             words = [{"w": w.word.strip(), "s": round(w.start, 3), "e": round(w.end, 3),
                       "p": round(w.probability, 3)}
                      for seg in segments for w in seg.words if w.word.strip()]
-            print(f"yazı dökümü: {model_name} / {device}, {len(words)} kelime")
-            return words
+            # Whisper splits Turkish suffixes after digits ("2", "'nin"); captions and anchors need one word.
+            merged = []
+            for w in words:
+                if merged and w["w"][0] in "'’":
+                    merged[-1].update(w=merged[-1]["w"] + w["w"], e=w["e"], p=min(merged[-1]["p"], w["p"]))
+                else:
+                    merged.append(w)
+            print(f"yazı dökümü: {model_name} / {device}, {len(merged)} kelime")
+            return merged
         except (RuntimeError, ValueError, OSError) as err:
             print(f"{device} kullanılamadı ({str(err)[:110]}), sıradakine geçiliyor")
     sys.exit("Yazı dökümü başarısız oldu.")

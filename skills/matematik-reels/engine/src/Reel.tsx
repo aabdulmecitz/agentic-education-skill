@@ -31,6 +31,8 @@ const useCamera = (cameras: Camera[]) => {
   return pose;
 };
 
+const PIP_SCALE = 0.42;
+
 const Grid: React.FC = () => {
   const frame = useCurrentFrame();
   const shift = (frame * 0.6) % 90;
@@ -104,10 +106,18 @@ const BrollLayer: React.FC<{b: Broll; src: string | null; length: number}> = ({b
             backgroundColor: theme.bg,
           }}
         >
+          {/* Centre the circle on the teacher's face, whatever the framing. */}
           <OffthreadVideo
             src={staticFile(src)}
             muted
-            style={{width: 240, height: 427, objectFit: 'cover', marginTop: -40}}
+            style={{
+              position: 'absolute',
+              width: 1080 * PIP_SCALE,
+              height: 1920 * PIP_SCALE,
+              maxWidth: 'none',
+              left: 120 - (b.focus?.[0] ?? 540) * PIP_SCALE,
+              top: 120 - (b.focus?.[1] ?? 640) * PIP_SCALE,
+            }}
           />
         </div>
       ) : null}
@@ -160,8 +170,15 @@ export const Reel: React.FC<Timeline> = (t) => {
     easing: Easing.bezier(0.45, 0, 0.55, 1),
     extrapolateRight: 'clamp',
   });
+  // Moving the teacher aside would expose empty frame, so a blurred copy fills whatever it uncovers.
+  const exposesEdge = t.cameras.some((c) => c.x !== 0 || c.y !== 0);
   return (
     <AbsoluteFill style={{backgroundColor: theme.bg}}>
+      {t.src && exposesEdge ? (
+        <AbsoluteFill style={{transform: 'scale(1.3)', filter: 'blur(36px) brightness(0.55)'}}>
+          <OffthreadVideo src={staticFile(t.src)} muted style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+        </AbsoluteFill>
+      ) : null}
       <AbsoluteFill
         style={{transform: `translate(${cam.x}px, ${cam.y}px) scale(${cam.scale * drift})`, transformOrigin: '50% 45%'}}
       >

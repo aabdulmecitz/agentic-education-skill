@@ -1,0 +1,12 @@
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+out/
+videolar/
+*.mp4
+*.m4a
+*.mp3
+*.wav
+.DS_Store
